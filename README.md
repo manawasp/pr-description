@@ -48,8 +48,9 @@ collapsed table, one row per file or per group of files changed for one reason.
 Requires `python3` and `git`.
 
 ```bash
-git clone git@github.com:manawasp/pr-description.git ~/Personnel/pr-description
-~/Personnel/pr-description/install.sh
+git clone git@github.com:manawasp/pr-description.git
+cd pr-description
+./install.sh
 ```
 
 The installer symlinks `skill/` to `~/.claude/skills/pr-description` and the
@@ -60,11 +61,8 @@ loads the hook after `/hooks`; a new session has it from the start.
 
 ## Update
 
-```bash
-git -C ~/Personnel/pr-description pull
-```
-
-The symlinks mean the live skill and hook change with the checkout.
+Run `git pull` in the clone. The symlinks mean the live skill and hook change
+with the checkout, so keep the clone where it was installed from.
 
 ## What the guard refuses
 
