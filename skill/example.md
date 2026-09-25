@@ -18,13 +18,12 @@ Closes #423.
 - The entrypoint is separated from the app so the integration test can start it.
 
 ## How to verify
-- Lint, typecheck and 612 unit tests pass in `src/frontend`.
-- `pnpm build` passes, and the dist check fails on an injected inline script.
-- Smoke test in both modes: headers on the shell, an asset and a 404. The collector logs a violation and answers 204.
-- E2E not run locally with the backend down. CI runs it.
+- `curl -I` the app shell, a hashed asset and an unknown path: all three carry the six headers.
+- Open the editor, upload an image and embed a video: the browser console shows no CSP violation.
+- Restart with `CSP_MODE=report-only` and load a page with an inline script injected in DevTools: the server logs one violation line.
 
 ## Notes for the reviewer
-- `frame-src https:` and `https:` on `img-src` and `media-src` are wider than the issue specified. The embed block and every media block's Link tab load arbitrary URLs, so a narrower directive would blank existing content. #439 covers the allowlist.
+- `frame-src https:` and `https:` on the media directives are wider than the issue specified, because embeds and media links load arbitrary URLs. #439 covers the allowlist.
 - `style-src` keeps `'unsafe-inline'` because Tailwind and Vue `:style` bindings write inline styles.
 
 <details><summary>Files</summary>
@@ -32,12 +31,12 @@ Closes #423.
 | File | Change |
 |---|---|
 | `src/frontend/server/security-headers.ts` | Added a pure builder that turns the config into a header map. One middleware applies the map to every route, including routes added later. |
-| `src/frontend/server/app.ts`, `server/index.ts` | Moved the app into `app.ts` and reduced `index.ts` to binding the port, so the integration test can start the real app on its own port. Proxied responses get the headers re-applied in `onResponse`, because h3 copies upstream headers as they are. |
-| `src/frontend/server/csp-report.ts` | Added the report-only collector. It caps the body at 16 KB as bytes arrive, shares the proxy's rate-limit budget, truncates every field and answers 204 in every case. It is mounted when `CSP_MODE=report-only`. |
+| `src/frontend/server/app.ts`, `server/index.ts` | Moved the app into `app.ts` so the integration test can start it. `onResponse` re-applies the headers to proxied responses, because h3 copies upstream headers. |
+| `src/frontend/server/csp-report.ts` | Added the report-only collector. It caps the body at 16 KB, shares the proxy's rate limit, truncates every field and answers 204. |
 | `src/frontend/server/client-ip.ts` | Added `requestIsHttps`, which reads `x-forwarded-proto` with the same trusted-hop count as `resolveClientIp`. HSTS is set when the socket or a trusted hop reports TLS. |
 | `src/frontend/server/__tests__/*.spec.ts` | Added five spec files: the header builder, HSTS resolution, the enforced and report-only apps end to end, and the collector's caps. |
 | `src/frontend/scripts/verify-dist.mjs` | Added a post-build check that fails when `dist/` contains an inline script, since `script-src 'self'` blocks inline scripts. Run by `pnpm build`. |
-| `src/frontend/scripts/icons.mjs`, `vite.config.ts` | Added a scan that bundles every icon used in `app/` and `libs/runes`, because an icon that is not bundled is fetched at runtime and `connect-src` blocks the request. A missing icon collection fails the build with the icon name. |
+| `src/frontend/scripts/icons.mjs`, `vite.config.ts` | Added a scan that bundles every icon used in `app/` and `libs/runes`, because `connect-src` blocks an icon fetched at runtime. |
 | `e2e/app-browser/playwright.config.ts`, `.github/workflows/e2e-tests.yml`, `src/frontend/Dockerfile.prod` | Pass `VITE_WS_URL` and `PUBLIC_S3_ENDPOINT` to the h3 server so the policy allows the realtime socket and uploads. |
 | `e2e/app-browser/test/editor/upload.spec.ts` | Added a real upload that asserts the console carried no CSP violation. |
 | `src/frontend/package.json`, `pnpm-lock.yaml` | Added the icon collections the scan installs. |

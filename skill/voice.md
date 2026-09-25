@@ -37,6 +37,35 @@ summary uses.
 | The unset option is a `'default'` sentinel mapped to null, since reka-ui throws on an empty-string item. | The unset option uses the value `'default'` and is mapped to null on save, because reka-ui rejects an empty-string item. |
 | Length follows the diff, not the effort. | Deleted. A maxim carries no fact about this change. |
 
+## CI checks
+
+`## How to verify` lists what a reviewer checks by hand. The guard refuses the
+entries below in that section, inline code included, matched case-insensitively
+at the start of a word. CI already reports each of them.
+
+```ci-checks
+ruff
+mypy
+pyright
+flake8
+pylint
+eslint
+prettier
+tsc
+typecheck
+type check
+lint
+pytest
+vitest
+jest
+unit test
+e2e
+test suite
+tests pass
+coverage
+pre-commit
+```
+
 ## Banned
 
 Mechanical tells the guard refuses anywhere in the body, outside inline code.
