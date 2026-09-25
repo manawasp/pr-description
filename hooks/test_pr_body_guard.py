@@ -6,6 +6,7 @@ import tempfile
 import unittest
 
 HOOK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pr-body-guard.py")
+SKILL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "skill")
 
 GOOD_BODY = """## Why
 The tab title never changed, so every bookmark of a documentation product read the same string.
@@ -128,6 +129,37 @@ class BodyExtraction(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("body", err.lower())
 
+    def write(self, body):
+        f = tempfile.NamedTemporaryFile("w", suffix=".md", delete=False)
+        f.write(body)
+        f.close()
+        self.addCleanup(os.unlink, f.name)
+        return f.name
+
+    def test_glab_cat_substitution_reads_the_file(self):
+        good, bad = self.write(GOOD_BODY), self.write("just a sentence")
+        code, err = run_hook(f'glab mr create --title "t" -d "$(cat {good})"')
+        self.assertEqual(code, 0, err)
+        code, _ = run_hook(f'glab mr update 12 --description "$(< {bad})"')
+        self.assertEqual(code, 2)
+
+    def test_cat_substitution_with_shell_variable_says_so(self):
+        code, err = run_hook('glab mr create --title "t" -d "$(cat $S/body.md)"')
+        self.assertEqual(code, 2)
+        self.assertIn("literal", err)
+
+    def test_gh_draft_flag_is_not_a_body_flag(self):
+        code, err = run_hook(f"gh pr create -d --title t --body-file {self.write(GOOD_BODY)}")
+        self.assertEqual(code, 0, err)
+
+    def test_flag_inside_a_quoted_title_is_not_a_body_flag(self):
+        code, err = run_hook(f'gh pr create --title "drop the -b alias" --body-file {self.write(GOOD_BODY)}')
+        self.assertEqual(code, 0, err)
+
+    def test_body_flag_of_a_later_command_is_not_read(self):
+        code, _ = run_hook('gh pr create --title "t" && echo --body "## Why"')
+        self.assertEqual(code, 2)
+
     def test_heredoc_after_an_earlier_heredoc_is_the_one_inspected(self):
         cmd = (
             "git commit -m \"$(cat <<'EOF'\nfeat: something\n\nlong commit body\nEOF\n)\" && "
@@ -159,7 +191,7 @@ class Rules(unittest.TestCase):
 
     def test_details_block_does_not_count_toward_the_budget(self):
         rows = "\n".join(
-            f"| `file{i}.ts` | " + " ".join(["word"] * 50) + " |" for i in range(20)
+            f"| `file{i}.ts` | " + " ".join(["word"] * 25) + " |" for i in range(20)
         )
         body = GOOD_BODY.replace("</details>", rows + "\n</details>")
         code, err = run_hook(heredoc(body))
@@ -174,12 +206,12 @@ class Rules(unittest.TestCase):
         body = GOOD_BODY.split("<details>")[0] + "🤖 Generated with Claude Code"
         self.assertBlocked(body, "details")
 
-    def test_table_cell_over_60_words(self):
-        long_cell = " ".join(["word"] * 61)
+    def test_table_cell_over_25_words(self):
+        long_cell = " ".join(["word"] * 26)
         body = GOOD_BODY.replace(
             "Calls the composable once so every route is covered without a per-page convention.", long_cell
         )
-        self.assertBlocked(body, "60")
+        self.assertBlocked(body, "25")
 
     def test_closes_outside_why_is_refused(self):
         body = without_line(GOOD_BODY, "Closes #426.").replace(
@@ -192,6 +224,17 @@ class Rules(unittest.TestCase):
             "## How to verify", "Fixes #426\n\n## How to verify"
         )
         self.assertBlocked(body, "Why")
+
+    def test_text_after_the_issue_reference_is_refused(self):
+        body = GOOD_BODY.replace("Closes #426.\n", "Closes #426.\nThe titles also reach the history.\n")
+        self.assertBlocked(body, "last line")
+
+    def test_several_trailing_issue_references_pass(self):
+        code, err = run_hook(heredoc(GOOD_BODY.replace("Closes #426.\n", "Closes #426.\nRefs #12.\n")))
+        self.assertEqual(code, 0, err)
+
+    def test_level_three_heading_does_not_count(self):
+        self.assertBlocked(GOOD_BODY.replace("## Why", "### Why"), "## Why")
 
     def test_body_without_any_issue_reference_passes(self):
         code, err = run_hook(heredoc(without_line(GOOD_BODY, "Closes #426.")))
@@ -213,6 +256,12 @@ Rules here.
 deliberately
 which is what
 —
+```
+
+```ci-checks
+ruff
+tests pass
+coverage
 ```
 """
 
@@ -261,6 +310,18 @@ class Voice(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("basically", err)
 
+    def test_ci_check_under_how_to_verify_is_refused(self):
+        body = GOOD_BODY.replace("- Open a document", "- `ruff` and mypy pass.\n- 516 tests passed.\n- Open a document")
+        code, err = run_hook(heredoc(body), voice=self.voice)
+        self.assertEqual(code, 2)
+        self.assertIn("`ruff`", err)
+        self.assertIn("`tests pass`", err)
+
+    def test_ci_check_outside_how_to_verify_is_allowed(self):
+        body = GOOD_BODY.replace("- A document rename", "- Coverage reports now include the composable.\n- A document rename")
+        code, err = run_hook(heredoc(body), voice=self.voice)
+        self.assertEqual(code, 0, err)
+
     def test_refusal_names_the_voice_file(self):
         body = GOOD_BODY.replace("One composable renders", "One composable deliberately renders")
         _, err = run_hook(heredoc(body), voice=self.voice)
@@ -281,6 +342,16 @@ class CheckMode(unittest.TestCase):
     def test_check_passes_a_good_body(self):
         code, err = self.check(GOOD_BODY)
         self.assertEqual(code, 0, err)
+
+    def test_worked_example_passes_with_the_shipped_voice(self):
+        with open(os.path.join(SKILL_DIR, "example.md"), encoding="utf-8") as f:
+            body = f.read().split("\n---\n", 1)[1]
+        env = dict(os.environ, PR_BODY_GUARD_VOICE=os.path.join(SKILL_DIR, "voice.md"))
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+            f.write(body)
+        self.addCleanup(os.unlink, f.name)
+        proc = subprocess.run([sys.executable, HOOK, "--check", f.name], capture_output=True, text=True, timeout=10, env=env, cwd=SKILL_DIR)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
 
     def test_check_reports_problems(self):
         code, err = self.check(GOOD_BODY.replace("## Why", "## Context"))

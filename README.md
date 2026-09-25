@@ -24,7 +24,7 @@ Closes #123.
 
 | File | Change |
 |---|---|
-| `path/to/file.ts` | One to three sentences in the style of a GitHub Copilot summary item. |
+| `path/to/file.ts` | One or two sentences in the style of a GitHub Copilot summary item. |
 </details>
 ```
 
@@ -71,10 +71,11 @@ with the checkout, so keep the clone where it was installed from.
 | Visible body, everything outside `<details>` | 250 words |
 | Required headings | `## Why`, `## What changed`, `## How to verify` |
 | Files table inside `<details>` | present, one row minimum |
-| Table cell | 60 words |
-| Issue reference (`Closes`, `Fixes`, `Refs` and variants) | last line of `## Why` only |
+| Table cell | 25 words |
+| Issue reference (`Closes`, `Fixes`, `Refs` and variants) | last lines of `## Why` only, no text after it |
+| Tools in the voice file's `ci-checks` block (`ruff`, `tsc`, `tests pass`…) | none under `## How to verify` |
 | Phrases in the voice file's `banned` block | none, outside inline code |
-| Body passed by `--body-file` | a literal path, no shell variables, not stdin |
+| Body passed by `--body-file` or `-d "$(cat <path>)"` | a literal path, no shell variables, not stdin |
 
 A refusal lists every problem at once. Check a body before shipping it:
 
@@ -82,15 +83,16 @@ A refusal lists every problem at once. Check a body before shipping it:
 python3 ~/.claude/hooks/pr-body-guard.py --check body.md
 ```
 
-The guard reads `--body`, `--body-file` and `-d/--description` values, heredocs
-included, and ignores the same words when they appear inside a heredoc that
-writes documentation.
+The guard reads `-b/--body` and `-F/--body-file` for `gh`, `-d/--description`
+for `glab`, heredocs and `$(cat <path>)` included. It reads flags as shell
+words, so `-d` (draft) on `gh` or a flag inside a quoted title is not taken for
+a body, and it ignores the same words inside a heredoc that writes documentation.
 
 ## Voice per repository
 
 `skill/voice.md` is the default voice. A repository that wants a different one
 commits `.claude/pr-voice.md`. When a PR command runs from that repository the
-guard reads that file's `banned` block instead of the global one. The file can
+guard reads that file's `banned` and `ci-checks` blocks instead of the global ones. The file can
 also carry the prose rules Claude should follow there.
 
 ## Project command
