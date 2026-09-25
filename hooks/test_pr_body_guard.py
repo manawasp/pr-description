@@ -16,8 +16,8 @@ Closes #426.
 - A document rename moves the tab title without a reload.
 
 ## How to verify
-- `pnpm test` in `src/frontend`: 582 passed, 11 new.
-- E2E not run locally. CI covers the two new title assertions.
+- Open a document: the tab reads `document · workspace · Narset`.
+- Rename that document from the sidebar: the tab title follows without a reload.
 
 <details><summary>Files</summary>
 

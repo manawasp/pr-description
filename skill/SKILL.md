@@ -30,8 +30,8 @@ Closes #123.
 - Three to six bullets. Each is one sentence about behaviour, not about a file.
 
 ## How to verify
-- What ran, and its result.
-- What did not run, and why.
+- A page to open and what to see there, or an endpoint to call and what it returns.
+- The edge case the change is about, with the input that triggers it.
 
 ## Notes for the reviewer
 - Optional, at most three. Only what could look wrong at first glance.
@@ -53,7 +53,7 @@ Closes #123.
 |---|---|---|
 | Why | The problem, then the issue reference as the **last line**, with the keyword and path form the repository uses: `Closes #12` where merging closes the ticket, `Refs group/project#12` where it must not. No issue, no line. | 1 to 3 sentences |
 | What changed | Behaviour a reviewer can check. A file name belongs in the table, not here. | 3 to 6 bullets |
-| How to verify | One line of outcome per check, not a transcript. Anything skipped is named as skipped, with the reason. Counts only where the repository wants them. | bullets |
+| How to verify | What a reviewer does by hand to see the change work. Frontend: the page or component, the action, what appears. API: the method and path, a request body or query when the endpoint takes one, and the status or field to expect. The more branches the change touches, the more precise the case: a payload that hits the new branch, not the happy path alone. A manual check that needs an environment the author did not have, such as live Kafka or a deployed stack, is named as not run. Lint, format, typecheck, test counts and coverage stay out, because CI reports them. | 1 to 5 bullets |
 | Notes for the reviewer | A decision that looks wrong and is not, a deviation from the issue, a follow-up filed. Omit the section when empty. | up to 3 bullets |
 | Files table | One row per file, or per group changed for one reason (generated code, locales, lockfiles, fixtures). The Change cell reads like a GitHub Copilot summary item: `Added a pure builder that…`, `Replaced the per-page call with…`. | up to 60 words per cell |
 | Visible part | Everything outside `<details>` | up to 250 words |
@@ -88,3 +88,5 @@ glab mr create --title "type(scope): subject" -d "$(cat /tmp/body.md)"
 | File paths in What changed | Move them to the table |
 | A cell that names a symbol and stops | Say what it does and what that enables or prevents |
 | No table because one file changed | One row is still a table |
+| `ruff`, `mypy`, `tsc`, a test count or a coverage figure under How to verify | CI reports those. Name the screen or the request that shows the change |
+| `curl /api/items` and nothing else for a change to one filter | The request that exercises the filter, and the field that proves it applied |

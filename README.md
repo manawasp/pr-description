@@ -15,7 +15,7 @@ Closes #123.
 - Three to six one-line bullets about behaviour.
 
 ## How to verify
-- What ran and its result. What did not run, and why.
+- What to check by hand: the screen and action, or the request and its response.
 
 ## Notes for the reviewer
 - Optional, at most three. Only what could look wrong at first glance.

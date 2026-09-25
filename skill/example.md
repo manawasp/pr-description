@@ -18,10 +18,9 @@ Closes #423.
 - The entrypoint is separated from the app so the integration test can start it.
 
 ## How to verify
-- Lint, typecheck and 612 unit tests pass in `src/frontend`.
-- `pnpm build` passes, and the dist check fails on an injected inline script.
-- Smoke test in both modes: headers on the shell, an asset and a 404. The collector logs a violation and answers 204.
-- E2E not run locally with the backend down. CI runs it.
+- `curl -I` the app shell, a hashed asset and an unknown path: all three carry the six headers.
+- Open the editor, upload an image and embed a video: the browser console shows no CSP violation.
+- Restart with `CSP_MODE=report-only` and load a page with an inline script injected in DevTools: the server logs one violation line.
 
 ## Notes for the reviewer
 - `frame-src https:` and `https:` on `img-src` and `media-src` are wider than the issue specified. The embed block and every media block's Link tab load arbitrary URLs, so a narrower directive would blank existing content. #439 covers the allowlist.
